@@ -1,0 +1,159 @@
+﻿@page "/"
+
+<PageTitle>Index</PageTitle>
+
+<h1>
+    Hello world testing
+</h1>
+
+<button @onclick="UpdateData">Update</button>
+<button @onclick="PreviousPage">Previous page</button>
+<button @onclick="NextPage">Next page</button>
+
+<table>
+    <thead>
+    <tr>
+        @foreach (var header in DataGrid.Headers)
+        {
+            <th @key="header.Id">
+                @header.Title
+                @if (header.IsSortable)
+                {
+                    <button @onclick="header.ToggleSortedBy">toggle</button>
+                }
+                @if (header.SortedBy != SortedBy.None)
+                {
+                    <div>
+                        @header.SortedBy.ToString()
+                    </div>
+                }
+            </th>
+        }
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var row in DataGrid.Rows)
+    {
+        <tr @key="row.Id">
+            @foreach (var cell in row.Cells)
+            {
+                <td @onclick="() => row.IsExpanded = !row.IsExpanded">
+                    @if (cell.Render is not null)
+                    {
+                        <RenderFragment>
+                            @cell.Render
+                        </RenderFragment>
+                    }
+                    else
+                    {
+                        @cell.Value
+                    }
+                </td>
+            }
+        </tr>
+        @if (row.IsExpanded)
+        {
+            <tr>
+                <td colspan="@DataGrid.Headers.Count">
+                    @row.Value.Age
+                </td>
+            </tr>
+        }
+    }
+    </tbody>
+</table>
+
+<span>
+    Max pages: @DataGrid.Pages
+</span>
+<span>
+    Current page: @(DataGrid.CurrentPage + 1)
+</span>
+
+@code {
+
+    record Person
+    {
+        public string Name { get; set; }
+        public int Age { get; set; }
+    }
+
+    private BlazorHeadlessDataGrid<Person> DataGrid;
+
+    private void UpdateData()
+    {
+        this.DataGrid.UpdateData(new List<Person>()
+        {
+            new Person()
+            {
+                Age = 40,
+                Name = "Thom"
+            }
+        });
+    }
+
+    private void NextPage()
+    {
+        this.DataGrid.NextPage();
+    }
+
+    private void PreviousPage()
+    {
+        this.DataGrid.PreviousPage();
+    }
+
+    private List<Person> FakeData(int amount)
+    {
+        var result = new List<Person>();
+
+        for (var i = 0; i < amount; i++)
+        {
+            result.Add(new()
+            {
+                Age = i,
+                Name = $"Name: {i}|"
+            });
+        }
+
+        return result;
+    }
+
+    protected override void OnInitialized()
+    {
+        this.DataGrid = new(new List<ColumnDef<Person>>
+        {
+            new()
+            {
+                Title = "Name",
+                AccessorFunc = p => p.Name,
+                IsSortable = true,
+                OnToggleSortedBy = args =>
+                {
+                    Console.WriteLine(args.SortedBy);
+                    Console.WriteLine(args.Header);
+                }
+            },
+            new()
+            {
+                Title = "Age",
+                AccessorFunc = p => p.Age,
+                OnRenderCell = (person, context) =>
+                {
+                    return @<div>
+                               hello @context.Header.Title
+                           </div>;
+                }
+            },
+            new ()
+            {
+                Id = "chevron",
+                OnRenderCell = (p, context) =>
+                {
+                    return @<div>Chevrondown</div>;
+                }
+            }
+        }, this.FakeData(23));
+        base.OnInitialized();
+    }
+
+}
